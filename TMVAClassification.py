@@ -113,6 +113,7 @@ def main():
 
     # Import ROOT classes
     from ROOT import gSystem, gROOT, gApplication, TFile, TTree, TChain, TCut
+    from AtlasStyle import *
 
     # check ROOT version, give alarm if 5.18
     if gROOT.GetVersionCode() >= 332288 and gROOT.GetVersionCode() < 332544:
@@ -129,6 +130,7 @@ def main():
 
     from ROOT import TMVA
 
+    SetAtlasStyle()
     # Output file
     outputFile = TFile( outfname, 'RECREATE' )
 
@@ -136,8 +138,8 @@ def main():
     # All TMVA output can be suppressed by removing the "!" (not) in
     # front of the "Silent" argument in the option string
     factory = TMVA.Factory( "TMVAClassification", outputFile,
-                            "!V:!Silent:Color:DrawProgressBar:Transformations=I;D;P;G,D:AnalysisType=Classification" )
-
+                            "!V:!Silent:Color:DrawProgressBar:AnalysisType=Classification" )
+    #TraVnsformations=I;D;P;G,D
     # Set verbosity
     factory.SetVerbose( verbose )
 
@@ -153,9 +155,9 @@ def main():
     # [all types of expressions that can also be parsed by TTree::Draw( "expression" )]
     emfrac =  "jet_AntiKt4LCTopo_emfrac"
     energy = "jet_AntiKt4LCTopo_E"
-    emEnergy = emfrac + "*" + energy
-    hadEnergy = "(1 -"+emfrac+")" + "*" + energy
-    hadEmRatio = hadEnergy + "/" + emEnergy
+    emEnergy = "{0} * {1}".format(emfrac, energy)
+    hadEnergy = "(1 - {0}) * {1}".format(emfrac, energy)
+    #CalRatio = "log((1 - {0}) / {0})".format(emfrac) #CalRatio = log(hadEnergy / emEnergy)
 
     #factory.AddVariable("jet_AntiKt4LCTopo_pt", "Jet Transverse Momentum", 'F')
     #factory.AddVariable("trk_pt", "Track Transverse Momentum", 'F')
@@ -163,7 +165,17 @@ def main():
 
     factory.AddVariable("jet_AntiKt4LCTopo_pt", "Jet Transverse Momentum", 'F')
     factory.AddVariable("jet_AntiKt4LCTopo_eta", "Jet eta", 'F')
-    factory.AddVariable("calRatio := log("+hadEmRatio+")", "Cal Ratio", 'F')
+    ####factory.AddVariable("CUSTOMTEST := mything({0})".format(emfrac) "SUPER TEST VARIABLE")
+    #factory.AddVariable(emEnergy, "EM Energy", 'F')
+    #factory.AddVariable(hadEnergy, "Hadrionic Energy", 'F')
+
+    #import Functions
+    #gROOT.LoadMacro(Functions)
+    ####CalculateCalRatio = "log(hadEmRatio) if emfrac != 0 else 20"
+    #factory.AddVariable("calRatio := CalculateCalRatio({0})".format(hadEmRatio), "Cal Ratio", 'F')
+    factory.AddVariable("calRatio ", "Cal Ratio", 'F')
+    #calRatio =
+    #factory.AddVariable("calRatio := log({0})".format(hadEmRatio), "Cal Ratio", 'F')
 
     # You can add so-called "Spectator variables", which are not used in the MVA training,
     # but will appear in the final "TestTree" produced by TMVA. This TestTree will contain the
@@ -177,33 +189,16 @@ def main():
     #if gSystem.AccessPathName( infname ) != 0: gSystem.Exec( "wget http://root.cern.ch/files/" + infname )
 
     # Chain Files overide set Trees
-    # NEEDS TO BE IMPROVED
+
     ChainFileSig = TChain("physics")
-    #ChainFileSig.Add("/phys/groups/tev/scratch3/users/HV/WHHV/ntup_001/"
-    #                 "ntup_aod_08_***_****.root")
-    ChainFileSig.Add("/phys/groups/tev/scratch3/users/HV/WHHV/ntup_001/"
-                     "ntup_aod_**_****_****.root")
-   # ChainFileSig.Add("/phys/groups/tev/scratch3/users/HV/WHHV/ntup_001/"
-    #                 "ntup_aod_01_****_***.root")
-   #inFileSig.Add("/phys/groups/tev/scratch3/users/HV/WHHV/ntup_001/"
-    #                 "ntup_aod_00_151_200.root")
+    SignalFilePath = "phys/groups/tev/scratch3/users/HV/WHHV/ntup_001"
+    ChainFileSig.Add("/{0}/ntup_aod_00*".format(SignalFilePath))
 
-    CrazyPathName = "/mc12_8TeV.147912.Pythia8_AU2CT10_jetjet_JZ2W.merge.NTUP_COMMON.e1126_s1469_s1470_r6262_p1575_tid05435083_00"
+    CrazyPathName = "mc12_8TeV.147912.Pythia8_AU2CT10_jetjet_JZ2W.merge.NTUP_COMMON.e1126_s1469_s1470_r6262_p1575_tid05435083_00"
+    BackgroundFilePath = "phys/groups/tev/scratch4/users/gwatts/GRIDDS/{0}/{0}".format(CrazyPathName)
     ChainFileBkg = TChain("physics")
-    ChainFileBkg.Add("/phys/groups/tev/scratch4/users/gwatts/GRIDDS"+CrazyPathName+CrazyPathName+"/NTUP_COMMON.05435083._******.pool.root.1")
-    #ChainFileBkg.Add("/phys/groups/tev/scratch4/users/gwatts/GRIDDS"
-    #                 "/mc12_8TeV.147912.Pythia8_AU2CT10_jetjet_JZ2W.merge.NTUP_COMMON.e1126_s1469_s1470_r6262_p1575_tid05435083_00"
-    #                 "/mc12_8TeV.147912.Pythia8_AU2CT10_jetjet_JZ2W.merge.NTUP_COMMON.e1126_s1469_s1470_r6262_p1575_tid05435083_00/"
-    #                 "NTUP_COMMON.05435083._000002.pool.root.1")
-    #ChainFileBkg.Add("/phys/groups/tev/scratch4/users/gwatts/GRIDDS"
-    #                 "/mc12_8TeV.147912.Pythia8_AU2CT10_jetjet_JZ2W.merge.NTUP_COMMON.e1126_s1469_s1470_r6262_p1575_tid05435083_00"
-    #                 "/mc12_8TeV.147912.Pythia8_AU2CT10_jetjet_JZ2W.merge.NTUP_COMMON.e1126_s1469_s1470_r6262_p1575_tid05435083_00/"
-    #                 "NTUP_COMMON.05435083._000021.pool.root.1")
-    #ChainFileBkg.Add("/phys/groups/tev/scratch4/users/gwatts/GRIDDS/"
-    #                 "mc12_8TeV.147912.Pythia8_AU2CT10_jetjet_JZ2W.merge.NTUP_COMMON.e1126_s1469_s1470_r6262_p1575_tid05435083_00/"
-    #                 "mc12_8TeV.147912.Pythia8_AU2CT10_jetjet_JZ2W.merge.NTUP_COMMON.e1126_s1469_s1470_r6262_p1575_tid05435083_00/"
-    #                 "NTUP_COMMON.05435083._000012.pool.root.1")
-
+    #ChainFileBkg.Add("/{0}/NTUP_COMMON.05435083._000*".format(BackgroundFilePath))
+    ChainFileBkg.Add("/{0}/NTUP_COMMON.05435083._00001*".format(BackgroundFilePath))
     #input = TFile.Open( infname )
 
     # Get the signal and background trees for training
@@ -246,10 +241,10 @@ def main():
     #factory.SetBackgroundWeightExpression( "weight" )
     # Apply additional cuts on the signal and background sample.
     # example for cut: mycut = TCut( "abs(var1)<0.5 && abs(var2-0.5)<1" )
-    #mycutSig = TCut( "jet_AntiKt4LCTopo_pt>50000 && abs(jet_AntiKt4LCTopo_eta)<1.7" )
-    #mycutBkg = TCut( "jet_AntiKt4LCTopo_pt>50000 && abs(jet_AntiKt4LCTopo_eta)<1.7" )
-    mycutBkg = TCut("")
-    mycutSig = TCut("")
+    mycutSig = TCut( "jet_AntiKt4LCTopo_pt>25000 && abs(jet_AntiKt4LCTopo_eta)<1.7" )
+    mycutBkg = TCut( "jet_AntiKt4LCTopo_pt>25000 && abs(jet_AntiKt4LCTopo_eta)<1.7" )
+    #mycutBkg = TCut("")
+    #mycutSig = TCut("")
     # Here, the relevant variables are copied over in new, slim trees that are
     # used for TMVA training and testing
     # "SplitMode=Random" means that the input events are randomly shuffled before
@@ -270,7 +265,7 @@ def main():
     # Cut optimisation
     if "Cuts" in mlist:
         factory.BookMethod( TMVA.Types.kCuts, "Cuts",
-                            "!H:!V:FitMethod=MC:EffSel:SampleSize=200000:VarProp=FSmart" )
+                            "!H:!V:FitMethod=MC:EffSel:SampleSize=200000:VarProp=FSmart:VarTransform=Decorrelate" )
 
     if "CutsD" in mlist :
         factory.BookMethod( TMVA.Types.kCuts, "CutsD",

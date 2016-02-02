@@ -137,6 +137,7 @@ def main():
     # Create instance of TMVA factory (see TMVA/macros/TMVAClassification.C for more factory options)
     # All TMVA output can be suppressed by removing the "!" (not) in
     # front of the "Silent" argument in the option string
+  	#<Default> factory = TMVA.Factory( "TMVAClassification", outputFile,  "!V:!Silent:Color:DrawProgressBar:Transformations=I;D;P;G,D:AnalysisType=Classification" )
     factory = TMVA.Factory( "TMVAClassification", outputFile,
                             "!V:!Silent:Color:DrawProgressBar:AnalysisType=Classification" )
     #TraVnsformations=I;D;P;G,D

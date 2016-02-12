@@ -111,8 +111,12 @@ def main():
         if m.strip() != '':
             print "=== - <%s>" % m.strip()
 
+    ##############
+    # BEGIN ROOT #
+    ##############
+
     # Import ROOT classes
-    from ROOT import gSystem, gROOT, gApplication, TFile, TTree, TChain, TCut
+    from ROOT import gSystem, gApplication, TFile, TTree, TChain, TCut
     from AtlasStyle import *
 
     # check ROOT version, give alarm if 5.18
@@ -127,19 +131,17 @@ def main():
     gROOT.SetMacroPath( "$ROOTSYS/tmva/test/" )
     gROOT.Macro       ( "./TMVAlogon.C" )
     gROOT.LoadMacro   ( "./TMVAGui.C" )
-
+    gSystem.CompileMacro ("./HvFunctions.cpp") #Load User defined Functions
     from ROOT import TMVA
 
-    SetAtlasStyle()
     # Output file
     outputFile = TFile( outfname, 'RECREATE' )
 
     # Create instance of TMVA factory (see TMVA/macros/TMVAClassification.C for more factory options)
     # All TMVA output can be suppressed by removing the "!" (not) in
     # front of the "Silent" argument in the option string
-  	#<Default> factory = TMVA.Factory( "TMVAClassification", outputFile,  "!V:!Silent:Color:DrawProgressBar:Transformations=I;D;P;G,D:AnalysisType=Classification" )
     factory = TMVA.Factory( "TMVAClassification", outputFile,
-                            "!V:!Silent:Color:DrawProgressBar:AnalysisType=Classification" )
+                            "!V:!Silent:Color:DrawProgressBar:Transformations=I;D;P;G,D:AnalysisType=Classification" )
     #TraVnsformations=I;D;P;G,D
     # Set verbosity
     factory.SetVerbose( verbose )
@@ -149,7 +151,9 @@ def main():
     #    gConfig().GetVariablePlotting()).fTimesRMS = 8.0
     #    gConfig().GetIONames()).fWeightFileDir = "myWeightDirectory"
 
-    #####| Variables |#####
+    #############
+    # VARIABLES #
+    #############
 
     # Define the input variables that shall be used for the classifier training
     # note that you may also use variable expressions, such as: "3*var1/var2*abs(var3)"
@@ -164,23 +168,19 @@ def main():
     #factory.AddVariable("trk_pt", "Track Transverse Momentum", 'F')
     #factory.AddVariable("trk_eta", "Track eta", 'F')
 
-    factory.AddVariable("jet_AntiKt4LCTopo_pt", "Jet Transverse Momentum", 'F')
-    factory.AddVariable("jet_AntiKt4LCTopo_eta", "Jet eta", 'F')
-    ####factory.AddVariable("CUSTOMTEST := mything({0})".format(emfrac) "SUPER TEST VARIABLE")
-    #factory.AddVariable(emEnergy, "EM Energy", 'F')
-    #factory.AddVariable(hadEnergy, "Hadrionic Energy", 'F')
+    #factory.AddVariable("jet_AntiKt4LCTopo_pt", "Jet Transverse Momentum", 'F')
+    #factory.AddVariable("jet_AntiKt4LCTopo_eta", "Jet eta", 'F')
+    factory.AddVariable("calRatio := CalculateCalRatio(jet_AntiKt4LCTopo_emfrac, jet_AntiKt4LCTopo_E)", "Cal Ratio", 'F')
+    factory.AddVariable("NumTrack := CountTracks(jet_AntiKt4LCTopo_phi, jet_AntiKt4LCTopo_eta, trk_phi_wrtPV, trk_eta, trk_pt)", "Number of Tracks", "F")
 
-    #import Functions
-    #gROOT.LoadMacro(Functions)
-    ####CalculateCalRatio = "log(hadEmRatio) if emfrac != 0 else 20"
-    #factory.AddVariable("calRatio := CalculateCalRatio({0})".format(hadEmRatio), "Cal Ratio", 'F')
-    factory.AddVariable("calRatio ", "Cal Ratio", 'F')
-    #calRatio =
-    #factory.AddVariable("calRatio := log({0})".format(hadEmRatio), "Cal Ratio", 'F')
+    #######################
+    # SPECTATOR VARIABLES #
+    #######################
 
     # You can add so-called "Spectator variables", which are not used in the MVA training,
     # but will appear in the final "TestTree" produced by TMVA. This TestTree will contain the
     # input variables, the response values of all trained MVAs, and the spectator variables
+
     #factory.AddSpectator( "jet_AntiKt4LCTopo_pt", 'F' )
     #factory.AddSpectator( "", 'F' )
 

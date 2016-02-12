@@ -13,7 +13,7 @@ BKG_PATH='/phys/groups/tev/scratch4/users/gwatts/GRIDDS'$CRAZY_PATH''$CRAZY_PATH
 Signal_Path='/phys/groups/tev/scratch3/users/HV/WHHV/ntup_001'
 
 # Path to Launch Script
-Script_Path='/phys/users/tommeyer/Output/Output_1/'
+Script_Path='/phys/users/tommeyer/Scripts/HV/'
 
 echo "############################"
 echo "Starting TMVA Classification"
@@ -36,7 +36,7 @@ echo
 # Default Variables
 TEST_METHOD_INPUT="Cuts"
 TEST_FILE_INPUT="NTUP_COMMON.05435083._000001.pool.root.1"
-TEST_FILE_OUTPUT="TMVA_Cuts_NoPreCut_NoPreTransform"
+TEST_FILE_OUTPUT="HV_CalRatio_Test"
 
 ########################
 # User Input for Methods
@@ -55,7 +55,7 @@ read OUTPUT_FILE <<< "$TEST_FILE_OUTPUT.root"
 echo
 
 echo "Methods to be run: $METHOD_IN"
-echo "ROOT File to be read: $INPUT_FILE"
+echo "Root File to be read: $INPUT_FILE"
 echo "Root File to be output: $OUTPUT_FILE"
 
 #echo "Trees:" #-t
@@ -75,7 +75,12 @@ TMVA_LAUNCH_SCRIPT=""$Script_Path"TMVAClassification.py "$TMVA_Launch_ARGUMENTS"
 echo "$TMVA_LAUNCH_SCRIPT"
 echo
 
+#cd /phys/groups/tev/scratch4/user/tommeyer/Output
+#DATE_DIR=$(date +%m-%d-%Y)
+#mkdir ./$DATE_DIR
+#cd $DATE_DIR
+
+
 # Log and launch script
-echo "Please enter desired log file name:(Do not add .txt)"
-Output_log="$OUTPUT_FILE"
-python $TMVA_LAUNCH_SCRIPT >> $Output_log.txt
+#echo "Please enter desired log file name:(Do not add .txt)"
+python $TMVA_LAUNCH_SCRIPT | tee $TEST_FILE_OUTPUT.txt

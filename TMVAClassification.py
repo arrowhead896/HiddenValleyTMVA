@@ -111,8 +111,12 @@ def main():
         if m.strip() != '':
             print "=== - <%s>" % m.strip()
 
+    ##############
+    # BEGIN ROOT #
+    ##############
+
     # Import ROOT classes
-    from ROOT import gSystem, gROOT, gApplication, TFile, TTree, TChain, TCut
+    from ROOT import gSystem, gApplication, TFile, TTree, TChain, TCut
     from AtlasStyle import *
 
     # check ROOT version, give alarm if 5.18
@@ -127,79 +131,85 @@ def main():
     gROOT.SetMacroPath( "$ROOTSYS/tmva/test/" )
     gROOT.Macro       ( "./TMVAlogon.C" )
     gROOT.LoadMacro   ( "./TMVAGui.C" )
-
+    gSystem.CompileMacro ("./HvFunctions.cpp") #Load User defined Functions
     from ROOT import TMVA
 
-    SetAtlasStyle()
     # Output file
     outputFile = TFile( outfname, 'RECREATE' )
 
+    #################
+    # SETUP FACTORY #
+    #################
+
+    factory = TMVA.Factory( "TMVAClassification", outputFile,
+                            "!V:!Silent:Color:DrawProgressBar:Transformations=I;D;P;G,D:AnalysisType=Classification" )
+    factory.SetVerbose( verbose )
+
+    #Transformations=I;D;P;G,D
     # Create instance of TMVA factory (see TMVA/macros/TMVAClassification.C for more factory options)
     # All TMVA output can be suppressed by removing the "!" (not) in
     # front of the "Silent" argument in the option string
-  	#<Default> factory = TMVA.Factory( "TMVAClassification", outputFile,  "!V:!Silent:Color:DrawProgressBar:Transformations=I;D;P;G,D:AnalysisType=Classification" )
-    factory = TMVA.Factory( "TMVAClassification", outputFile,
-                            "!V:!Silent:Color:DrawProgressBar:AnalysisType=Classification" )
-    #TraVnsformations=I;D;P;G,D
-    # Set verbosity
-    factory.SetVerbose( verbose )
 
     # If you wish to modify default settings
     # (please check "src/Config.h" to see all available global options)
     #    gConfig().GetVariablePlotting()).fTimesRMS = 8.0
     #    gConfig().GetIONames()).fWeightFileDir = "myWeightDirectory"
 
-    #####| Variables |#####
+    #############
+    # VARIABLES #
+    #############
 
-    # Define the input variables that shall be used for the classifier training
-    # note that you may also use variable expressions, such as: "3*var1/var2*abs(var3)"
-    # [all types of expressions that can also be parsed by TTree::Draw( "expression" )]
     emfrac =  "jet_AntiKt4LCTopo_emfrac"
     energy = "jet_AntiKt4LCTopo_E"
     emEnergy = "{0} * {1}".format(emfrac, energy)
     hadEnergy = "(1 - {0}) * {1}".format(emfrac, energy)
-    #CalRatio = "log((1 - {0}) / {0})".format(emfrac) #CalRatio = log(hadEnergy / emEnergy)
+
+    factory.AddVariable("calRatio := CalculateCalRatio(jet_AntiKt4LCTopo_emfrac, jet_AntiKt4LCTopo_E)", "Cal Ratio", 'F')
+    factory.AddVariable("NumTrack := CountTracks(jet_AntiKt4LCTopo_phi, jet_AntiKt4LCTopo_eta, trk_phi_wrtPV, trk_eta, trk_pt)", "Number of Tracks", "F")
+
+    # Define the input variables that shall be used for the classifier training
+    # note that you may also use variable expressions, such as: "3*var1/var2*abs(var3)"
+    # [all types of expressions that can also be parsed by TTree::Draw( "expression" )]
+
+    # OTHER
 
     #factory.AddVariable("jet_AntiKt4LCTopo_pt", "Jet Transverse Momentum", 'F')
     #factory.AddVariable("trk_pt", "Track Transverse Momentum", 'F')
     #factory.AddVariable("trk_eta", "Track eta", 'F')
 
-    factory.AddVariable("jet_AntiKt4LCTopo_pt", "Jet Transverse Momentum", 'F')
-    factory.AddVariable("jet_AntiKt4LCTopo_eta", "Jet eta", 'F')
-    ####factory.AddVariable("CUSTOMTEST := mything({0})".format(emfrac) "SUPER TEST VARIABLE")
-    #factory.AddVariable(emEnergy, "EM Energy", 'F')
-    #factory.AddVariable(hadEnergy, "Hadrionic Energy", 'F')
+    #factory.AddVariable("jet_AntiKt4LCTopo_pt", "Jet Transverse Momentum", 'F')
+    #factory.AddVariable("jet_AntiKt4LCTopo_eta", "Jet eta", 'F')
 
-    #import Functions
-    #gROOT.LoadMacro(Functions)
-    ####CalculateCalRatio = "log(hadEmRatio) if emfrac != 0 else 20"
-    #factory.AddVariable("calRatio := CalculateCalRatio({0})".format(hadEmRatio), "Cal Ratio", 'F')
-    factory.AddVariable("calRatio ", "Cal Ratio", 'F')
-    #calRatio =
-    #factory.AddVariable("calRatio := log({0})".format(hadEmRatio), "Cal Ratio", 'F')
+
+    #######################
+    # SPECTATOR VARIABLES #
+    #######################
 
     # You can add so-called "Spectator variables", which are not used in the MVA training,
     # but will appear in the final "TestTree" produced by TMVA. This TestTree will contain the
     # input variables, the response values of all trained MVAs, and the spectator variables
+
     #factory.AddSpectator( "jet_AntiKt4LCTopo_pt", 'F' )
     #factory.AddSpectator( "", 'F' )
 
-    #####| DATA |#####
-
-    # Read input data
-    #if gSystem.AccessPathName( infname ) != 0: gSystem.Exec( "wget http://root.cern.ch/files/" + infname )
-
+    ################
+    # INPUT TCHAIN #
+    ################
     # Chain Files overide set Trees
 
+    # SIGNAL
     ChainFileSig = TChain("physics")
     SignalFilePath = "phys/groups/tev/scratch3/users/HV/WHHV/ntup_001"
+
     ChainFileSig.Add("/{0}/ntup_aod_00*".format(SignalFilePath))
 
+    # BACKGROUND
+    ChainFileBkg = TChain("physics")
     CrazyPathName = "mc12_8TeV.147912.Pythia8_AU2CT10_jetjet_JZ2W.merge.NTUP_COMMON.e1126_s1469_s1470_r6262_p1575_tid05435083_00"
     BackgroundFilePath = "phys/groups/tev/scratch4/users/gwatts/GRIDDS/{0}/{0}".format(CrazyPathName)
-    ChainFileBkg = TChain("physics")
-    #ChainFileBkg.Add("/{0}/NTUP_COMMON.05435083._000*".format(BackgroundFilePath))
+
     ChainFileBkg.Add("/{0}/NTUP_COMMON.05435083._00001*".format(BackgroundFilePath))
+
     #input = TFile.Open( infname )
 
     # Get the signal and background trees for training
@@ -207,14 +217,21 @@ def main():
     #background  = input.Get( treeNameBkg )
     signal = ChainFileSig
     background = ChainFileBkg
+
+    ###########
+    # WEIGHTS #
+    ###########
+
     # Global event weights (see below for setting event-wise weights)
     signalWeight     = 1.0
     backgroundWeight = 1.0
 
-    # ====== register trees ====================================================
-    #
-    # the following method is the prefered one:
+    ########################
+    # LOAD DATA INTO TMVA #
+    ########################
+
     # you can add an arbitrary number of signal or background trees
+
     factory.AddSignalTree    ( signal, signalWeight     )
     factory.AddBackgroundTree( background, backgroundWeight )
 
@@ -222,28 +239,20 @@ def main():
     #    factory.AddSignalTree( signalTrainingTree, signalTrainWeight, "Training" )
     #    factory.AddSignalTree( signalTestTree,     signalTestWeight,  "Test" )
 
-    # Use the following code instead of the above two or four lines to add signal and background
-    # training and test events "by hand"
-    # NOTE that in this case one should not give expressions (such as "var1+var2") in the input
-    #      variable definition, but simply compute the expression before adding the event
-    #
-    #    # --- begin ----------------------------------------------------------
-    #
-    # ... *** please lookup code in TMVA/macros/TMVAClassification.C ***
-    #
-    #    # --- end ------------------------------------------------------------
-    #
-    # ====== end of register trees ==============================================
-
     # Set individual event weights (the variables must exist in the original TTree)
     #    for signal    : factory.SetSignalWeightExpression    ("weight1*weight2");
     #    for background: factory.SetBackgroundWeightExpression("weight1*weight2");
 
-    #factory.SetBackgroundWeightExpression( "weight" )
-    # Apply additional cuts on the signal and background sample.
-    # example for cut: mycut = TCut( "abs(var1)<0.5 && abs(var2-0.5)<1" )
+    #####################
+    # PRESELECTION CUTS #
+    #####################
+
     mycutSig = TCut( "jet_AntiKt4LCTopo_pt>25000 && abs(jet_AntiKt4LCTopo_eta)<1.7" )
     mycutBkg = TCut( "jet_AntiKt4LCTopo_pt>25000 && abs(jet_AntiKt4LCTopo_eta)<1.7" )
+
+    # Apply additional cuts on the signal and background sample.
+    # example for cut: mycut = TCut( "abs(var1)<0.5 && abs(var2-0.5)<1" )
+
     #mycutBkg = TCut("")
     #mycutSig = TCut("")
     # Here, the relevant variables are copied over in new, slim trees that are
@@ -251,13 +260,19 @@ def main():
     # "SplitMode=Random" means that the input events are randomly shuffled before
     # splitting them into training and test samples #factory.SetBackgroundWeightExpression( "weight" )
 
+    ##############################
+    # START TRAINING AND TESTING #
+    ##############################
+
     factory.PrepareTrainingAndTestTree( mycutSig, mycutBkg,
                                         "nTrain_Signal=0:nTrain_Background=0:SplitMode=Random:NormMode=NumEvents:!V" )
 
     # --------------------------------------------------------------------------------------------------
+    ################
+    # BOOK METHODS #
+    ################
 
-    # ---- Book MVA methods
-    #
+
     # please lookup the various method configuration options in the corresponding cxx files, eg:
     # src/MethoCuts.cxx, etc, or here: http://tmva.sourceforge.net/optionRef.html
     # it is possible to preset ranges in the option string in which the cut optimisation should be done:
